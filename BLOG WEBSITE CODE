@@ -1,0 +1,245 @@
+HTML :
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blog Home</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <h1>My Blog</h1>
+    <a href="/new">Create New Post</a>
+  </header>
+  <main>
+    <ul class="post-list">
+      <% posts.forEach(post => { %>
+        <li>
+          <a href="/post/<%= post._id %>">
+            <h2><%= post.title %></h2>
+            <p><%= post.content.substring(0, 100) %>...</p>
+            <small><%= new Date(post.date).toLocaleDateString() %></small>
+          </a>
+        </li>
+      <% }) %>
+    </ul>
+  </main>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= post.title %></title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <h1><%= post.title %></h1>
+    <a href="/">Back to Home</a>
+  </header>
+  <main>
+    <article>
+      <p><%= post.content %></p>
+      <small>Posted on <%= new Date(post.date).toLocaleDateString() %></small>
+    </article>
+  </main>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Post</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Create a New Post</h1>
+    <a href="/">Back to Home</a>
+  </header>
+  <main>
+    <form action="/new" method="POST">
+      <label for="title">Title:</label>
+      <input type="text" id="title" name="title" required>
+      <label for="content">Content:</label>
+      <textarea id="content" name="content" required></textarea>
+      <button type="submit">Submit</button>
+    </form>
+  </main>
+</body>
+</html>
+
+CSS:
+
+
+
+   body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+  }
+  
+  header {
+    background-color: #24ad57;
+    color: #fff;
+    padding: 1rem;
+    text-align: center;
+  }
+  
+  header a {
+    color: #fff;
+    text-decoration: none;
+    margin: 0 1rem;
+  }
+  
+  header a:hover {
+    text-decoration: underline;
+  }
+  
+  main {
+    padding: 1rem;
+  }
+  
+  .post-list {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  .post-list li {
+    background: #fff;
+    border: 1px solid #ddd;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border-radius: 5px;
+  }
+  
+  .post-list h2 {
+    margin: 0;
+  }
+  
+  .post-list p {
+    margin: 0.5rem 0;
+  }
+  
+  form {
+    background: #fff;
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+  }
+  
+  form label {
+    display: block;
+    margin: 0.5rem 0;
+  }
+  
+  form input, form textarea {
+    width: 100%;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+  }
+  
+  form button {
+    background: burlywood;
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  form button:hover {
+    background: #555;
+  }
+  
+  article {
+    background: #fff;
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+  }
+  
+  article small {
+    display: block;
+    margin-top: 1rem;
+    color: #666;
+  }
+NODE JS :
+
+
+
+        const express = require('express');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+const app = express();
+const port = 3000;
+
+// Connect to MongoDB
+mongoose.connect('mongodb://localhost:27017/blog-website', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+const postSchema = new mongoose.Schema({
+  title: String,
+  content: String,
+  date: { type: Date, default: Date.now },
+});
+
+const Post = mongoose.model('Post', postSchema);
+
+// Middleware
+app.use(bodyParser.urlencoded({ extended: true }));
+app.set('view engine', 'ejs');
+app.use(express.static('public'));
+
+// Routes
+app.get('/', async (req, res) => {
+  try {
+    const posts = await Post.find().sort({ date: -1 });
+    res.render('index', { posts });
+  } catch (err) {
+    res.status(500).send('Error retrieving posts.');
+  }
+});
+
+app.get('/post/:id', async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (post) {
+      res.render('post', { post });
+    } else {
+      res.status(404).send('Post not found.');
+    }
+  } catch (err) {
+    res.status(500).send('Error retrieving post.');
+  }
+});
+
+app.get('/new', (req, res) => {
+  res.render('new');
+});
+
+app.post('/new', async (req, res) => {
+  try {
+    const { title, content } = req.body;
+    const post = new Post({ title, content });
+    await post.save();
+    res.redirect('/');
+  } catch (err) {
+    res.status(500).send('Error saving post.');
+  }
+});
+
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
+});
